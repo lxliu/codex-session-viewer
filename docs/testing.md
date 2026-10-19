@@ -55,15 +55,18 @@ RSS 是 Go 测试进程的测量值，不包含浏览器和操作系统可回收
 - 全部 Go 测试、race、vet 和前端语法校验重新运行。
 - 本轮浏览器自动化返回 `Sky Computer Use native pipe startup failed`，无法执行实际浏览器的滚动位置、拖动和展开交互验收。上文 Chrome / Safari 检查是此前版本的记录，不代表本次滚动改动已经通过浏览器实测。
 
-## 环境限制
+## 二进制交付验证
 
-本次执行沙箱禁止本机监听：`listen tcp 127.0.0.1:10002: bind: operation not permitted`。因此没有把生产进程的监听、真实浏览器网络访问或 macOS / Linux 服务生命周期标记为已通过；脚本控制流测试中的 `curl` / `ps` 是 mock。正常终端的最终运行检查命令：
+2026-10-19 在解除执行环境限制后，使用仓库中的 macOS arm64 二进制和生产脚本完成了真实启动验证。测试采用含空格的临时路径、合成 Codex 目录、独立缓存和 `PORT=0`，未使用用户已有服务或真实会话内容。
 
-```sh
-./restart.sh
-./status.sh
-curl --noproxy '*' -fsS http://127.0.0.1:10002/api/health
-./stop.sh
-```
+- 本机二进制 `--version` / `--help` 正常。
+- `restart.sh` 启动、`status.sh` 健康检查、再次重启、停止均成功；进程 ID 与 `/api/health` 返回一致。
+- 实际 HTTP 健康接口、首页、内嵌 JS / CSS 和会话列表接口返回成功。
+- 核对 README 六个平台下载路径与 `bin/` 产物一一对应；Unix 产物具备可执行权限。
+- 六个平台文件头与目标架构一致，Linux 二进制为静态 ELF。Windows / Linux 仍未在目标操作系统运行。
 
-Windows 与 Linux 产物已编译，未在对应操作系统运行。当前机器的浏览器快照检查不能替代目标系统运行验证。
+## 验证范围与早期环境限制
+
+早期受限环境禁止本机监听，返回 `listen tcp 127.0.0.1:10002: bind: operation not permitted`；当时仅完成无监听的 Handler 集成测试及 mock 脚本控制流测试。本次交付验证补齐了 macOS 上真实服务的启动、健康检查和生命周期验证。
+
+真实浏览器中的滚动、位置保持与展开交互验收仍以此前相应章节列明的范围为准。HTTP 接口返回成功不能代替浏览器交互验证，本机运行也不能代替 Windows / Linux 目标系统验证。

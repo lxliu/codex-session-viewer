@@ -1,135 +1,185 @@
 # codex-session-viewer
 
-通过本机 Web 页面读懂 Codex 的执行过程：你的输入对应哪些动作、工具做了什么、各次模型请求消耗多少 token，以及时间花在哪里。
+通过本机 Web 页面查看 Codex 会话，帮助用户看清：**Codex 做了哪些事、哪次输入触发了这些动作、token 和时间花在哪里、多个 agent 如何协作。**
 
-Go 独立实现，只有标准库依赖。HTML、CSS、JavaScript 和 SVG 图标通过 `go:embed` 编入二进制。运行无需 Go、Node、Python、Codex 可执行程序、数据库服务、CDN 或外部网页资源。
+本页面向帮助用户安装、启动和使用本工具的 agent。默认使用已编译的二进制，**不需要安装 Go、Node、Python、数据库或前端依赖**。开发本系统的 agent 请阅读 [AGENTS.md](AGENTS.md)。
 
-## 启动
+## 给使用者的 agent
+
+1. 确认用户的操作系统、CPU 架构和 Codex 会话目录，选择对应二进制。
+2. 下载并启动本机服务，检查健康接口成功后，把浏览器地址交给用户。
+3. 引导用户先看“执行过程”，再按需要查看 token、时间、代理关系和原始证据。
+4. 遇到缺少记录、索引未完成或来源不明确时，说明实际状态，不编造执行过程或消耗归因。
+
+## 下载即用
+
+### 方式一：下载仓库，使用后台管理脚本（macOS / Linux）
 
 ```sh
-./build.sh
+git clone https://github.com/lxliu/codex-session-viewer.git
+cd codex-session-viewer
+```
+
+仓库的 `bin/` 已包含六个平台的二进制。先把本机对应的文件复制到脚本使用的固定路径：
+
+```sh
+viewer_os=$(uname -s)
+case "$viewer_os" in
+  Darwin) viewer_os=darwin ;;
+  Linux) viewer_os=linux ;;
+  *) echo "此脚本示例仅适用于 macOS / Linux" >&2; exit 1 ;;
+esac
+viewer_arch=$(uname -m)
+case "$viewer_arch" in
+  arm64|aarch64) viewer_arch=arm64 ;;
+  x86_64|amd64) viewer_arch=amd64 ;;
+  *) echo "暂未提供此 CPU 架构的二进制" >&2; exit 1 ;;
+esac
+cp "bin/codex-session-viewer-$viewer_os-$viewer_arch" bin/codex-session-viewer
+chmod +x bin/codex-session-viewer
 ./restart.sh
 ./status.sh
+```
+
+然后访问 **http://127.0.0.1:10002**。停止服务：
+
+```sh
 ./stop.sh
 ```
 
-默认地址：**http://127.0.0.1:10002**。只监听本机，不需要登录。
+`restart.sh`、`status.sh`、`stop.sh` 不需要 Go；使用系统中的 `sh`、`curl`、`ps` 等工具。只有缺少 `bin/codex-session-viewer` 时，启动脚本才会尝试编译，因此下载后应先完成上面的平台选择。
 
-`restart.sh` 会启动后台进程、记录 PID 和端口、验证服务返回的进程 ID，并将日志存入 `log/server.log`。启动脚本的健康检查使用 macOS / Linux 常见的 `curl`、`ps`；二进制本身不依赖这些命令。
+### 方式二：只下载一个二进制
 
-```sh
-PORT=10102 ./restart.sh       # 指定端口
-PORT=0 ./restart.sh           # 由系统选择空闲端口，实际地址由脚本打印
-CODEX_HOME=/path/to/.codex ./restart.sh
-```
+下面的链接直接下载 `main` 分支中的文件；无需下载整个仓库。
 
-直接运行单个二进制也可以：
-
-```sh
-./bin/codex-session-viewer --port 10002
-./bin/codex-session-viewer --help
-```
-
-Windows 可直接运行 `bin/codex-session-viewer-windows-amd64.exe` 或 arm64 版本，然后用浏览器访问同一地址。四个 `.sh` 脚本面向 macOS 和 Linux。
-
-## 数据与目录
-
-默认读取环境变量 `CODEX_HOME` 指向的目录；未设置时读取 `~/.codex`。递归发现其下所有 `.jsonl`，包含 `sessions`、`archived_sessions`、子代理与其他目录。不会因为类型未知而从目录列表排除文件。允许根目录本身是符号链接；不跟随目录内部的符号链接。
-
-```text
-src/                        全部应用源码、前端和测试工具
-  main.go                   入口、监听、退出与日志
-  internal/session/         目录发现、磁盘索引、解析、滚动窗口、搜索、JSON 范围检查
-  internal/server/          HTTP 接口、安全限制、接口测试
-  web/                      内嵌前端
-  tools/                    脚本测试与大文件压测
-bin/                        本机与交叉编译产物
-data/indexes/               可删除、可重建的索引
-data/projects.json          项目合并和名称偏好
-data/server.pid             脚本管理的进程 ID
-data/server.port            实际监听端口
-log/server.log              运行日志
-docs/                       设计、测试与格式说明
-research/codex/             独立获取的官方研究源码快照，运行时不使用
-research/provenance.json    官方版本及逐文件 Git blob 校验信息
-```
-
-所有会话文件只读。删除 `data/indexes/` 后会自动重建；删除 `data/projects.json` 会重置项目命名。`data/build-cache/` 是编译器缓存，不是运行依赖。
-
-参数：
-
-| 参数 | 默认值 | 含义 |
+| 系统 | CPU | 下载 |
 | --- | --- | --- |
-| `--port` | `10002` | 本机端口；`0` 为系统分配 |
-| `--codex-home` | `CODEX_HOME` 或 `~/.codex` | 本机 Codex 根目录 |
-| `--data-dir` | 二进制所在项目的 `data/`，否则当前目录的 `data/` | 自动创建的索引和偏好目录 |
-| `--version` | — | 显示版本 |
+| macOS | Apple Silicon / ARM64 | [codex-session-viewer-darwin-arm64](https://raw.githubusercontent.com/lxliu/codex-session-viewer/main/bin/codex-session-viewer-darwin-arm64) |
+| macOS | Intel / x86-64 | [codex-session-viewer-darwin-amd64](https://raw.githubusercontent.com/lxliu/codex-session-viewer/main/bin/codex-session-viewer-darwin-amd64) |
+| Linux | ARM64 / aarch64 | [codex-session-viewer-linux-arm64](https://raw.githubusercontent.com/lxliu/codex-session-viewer/main/bin/codex-session-viewer-linux-arm64) |
+| Linux | x86-64 / amd64 | [codex-session-viewer-linux-amd64](https://raw.githubusercontent.com/lxliu/codex-session-viewer/main/bin/codex-session-viewer-linux-amd64) |
+| Windows | x86-64 / AMD64 | [codex-session-viewer-windows-amd64.exe](https://raw.githubusercontent.com/lxliu/codex-session-viewer/main/bin/codex-session-viewer-windows-amd64.exe) |
+| Windows | ARM64 | [codex-session-viewer-windows-arm64.exe](https://raw.githubusercontent.com/lxliu/codex-session-viewer/main/bin/codex-session-viewer-windows-arm64.exe) |
 
-日志位于缓存目录同级的 `log/`。复制一个二进制到空目录即可启动，首次运行会自动创建输出目录，不需要预先存在的资源或缓存文件。
-
-## 阅读方式
-
-- **左侧项目 / 会话树**：按工作目录分组，显示路径避免同名项目混淆。搜索匹配项目、标题、路径、模型、线程 ID 与代理信息；会话标题优先采用第一条真实用户输入。点击 `⋯` 可改名，多个目录使用相同名称即合并分组。
-- **执行过程（默认）**：用户输入、分析摘要、计划、命令、文件修改、模型用量、答复、压缩和异常按文件顺序显示。可选择任务轮次；执行中追加输入保留在同一轮次及原位置。
-- **JSONL**：点击记录后，按字段和数组层级展开。通过原始字节范围惰性读取，长字符串只返回预览；数组每次最多展开 80 项。数值预览直接来自原文件，保留超出 JavaScript 安全整数范围的数字。
-- **原始内容**：带 JSONL 源行号的等宽文本连续滚动阅读，点击行号打开分段原文。大行按 64KB 分段，原始字节可完整流式下载。
-- **时间与消耗**：概览区区分输入、缓存命中、输出和推理输出；模型请求在时间线上显示用量。本页明确记录了耗时的操作另有排序，可点击定位。
-- **代理协作**：利用父线程关系显示主代理与子代理，时间区间允许重叠，按线程展示各自消耗及已知用量合计。
-- **日期跳转**：日期输入使用本机时区；索引内使用 UTC 时间戳。索引完成后可定位附近内容，可视化使用独立的全局步骤编号，详情中的 L 是 JSONL 源行号。
-- **全文搜索**：扫描当前会话整个原始文件，包含用户输入、工具参数和结果；左侧关键词框下还提供跨所有会话搜索入口，可找到不在会话标题中的历史输入。显示进度，可取消，最多返回 300 个匹配。ASCII 不区分大小写，其他 Unicode 按原文匹配。
-- **持续更新**：约每 1.5 秒检查当前文件，追加时增量索引。向上滚动或切换轮次会暂停实时跟随，点击“实时跟随”或“回到最新”恢复。
-
-## 统计原则与边界
-
-- 缓存命中属于输入，推理输出属于输出，不能重复相加。展示 token 处理量，不将其伪装成实际账单。
-- 优先使用 `token_usage_record` 的请求与累计字段；旧 `token_count` 作为兼容数据，避免两套记录重复累加。请求 ID 去重，恢复增量索引时保留最近请求 ID。
-- 无用量记录显示“未记录”。工具输出的字节数不等于模型 token 数，不将一次请求的输入消耗精确分摊给某个工具。
-- 操作耗时只采用记录中的字段。总历时包含用户间隔和等待；并行操作不能简单相加，也不把相邻记录之间的空白都称作“模型思考”。
-- 子代理有明确继承边界时，继承记录保留在原始视图中，不计入该代理自身的轮次和用量。
-- 非相邻轮次的迟到记录如无法可靠关联，保留为未归属并明确提示，避免误算到当前任务。未记录 ID 的旧格式按上下文近似分组。
-- 历史前缀 `history_base` / fork 会显示提示，本版按实际文件浏览，不自动重建被引用的完整逻辑历史。相关文件仍可从左侧单独打开。
-- 大于 8MB 的单条记录不做完整语义解析，但仍建立字节位置索引，可以展开 JSON 结构、分段读原文或下载。未知类型、损坏行同样保留。
-- 只显示 JSONL 实际保存的信息；已截断的结果、加密推理、未保存的细节无法恢复。暂不解压 `.jsonl.zst`。
-
-## 大文件处理
-
-打开时优先读文件尾部最多 2MB，后台单工作线程扫描。每条源记录索引为固定 48 字节，另存每步 24 字节的投影引用和每条源记录 8 字节的关联链接，行索引和轮次目录存磁盘，不把全部记录、全部步骤或所有轮次留在内存。单次接口最多 100 条，原始数据每次预算 2MB；前端上下滚动自动加载，最多保留 240 条 / 约 4M 字符的记录窗口，JSON 节点和长字符串按需加载。Go 设置 768MiB 软内存目标；应用以 2GB 为内存验收上限，实测见 [测试报告](docs/testing.md)。该软目标不是操作系统硬性限制。
-
-追加时复用已提交索引；半行写入等待后续内容；截断、同大小改写、版本变化或缓存缺失触发重建。缓存使用路径、文件大小、纳秒修改时间以及头部 / 已提交边界指纹判断有效性。
-
-首次全量索引时间随磁盘和数据内容变化，索引未完成时明确显示进度和部分统计范围。单调时间戳采用磁盘索引二分定位；乱序时间戳扫描紧凑索引寻找最近位置。
-
-## 构建与测试
-
-需要 Go 1.24 或更新版本，构建无需联网下载依赖：
+例如，在 macOS Apple Silicon 上：
 
 ```sh
-./build.sh                    # 当前系统 / CPU → bin/codex-session-viewer
-./build.sh all                # macOS、Linux、Windows × amd64、arm64
-cd src
-go test ./...
-go test -race ./...
-go vet ./...
+mkdir -p codex-session-viewer
+cd codex-session-viewer
+curl -fL https://raw.githubusercontent.com/lxliu/codex-session-viewer/main/bin/codex-session-viewer-darwin-arm64 -o codex-session-viewer
+chmod +x codex-session-viewer
+./codex-session-viewer --port 10002
 ```
 
-可选测试工具需要 Python 3，仅用于开发测试：
+Windows x86-64 的 PowerShell 示例：
+
+```powershell
+New-Item -ItemType Directory -Force codex-session-viewer | Out-Null
+Set-Location codex-session-viewer
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/lxliu/codex-session-viewer/main/bin/codex-session-viewer-windows-amd64.exe' -OutFile 'codex-session-viewer.exe'
+.\codex-session-viewer.exe --port 10002
+```
+
+其他平台选择表格中对应的文件即可。以上命令以前台方式运行，保持终端打开，按 `Ctrl+C` 停止。服务启动后打开 **http://127.0.0.1:10002**。
+
+二进制已内嵌全部网页资源，可单独复制到其他目录运行。首次运行会自动创建缓存和日志目录。`bin/codex-session-viewer` 是构建机器的平台产物，跨机器使用时请明确选择带系统和架构后缀的文件。
+
+## 会话目录、端口与健康检查
+
+默认读取 `CODEX_HOME`；未设置时读取当前用户的 `~/.codex`。递归发现其中所有 `.jsonl`，包括历史归档和子代理会话。工具对这些文件只读。
+
+指定其他 Codex 根目录或空闲端口：
 
 ```sh
-python3 src/tools/test_scripts.py
-python3 src/tools/run_perf.py              # 生成、扫描并自动清理 6GiB 实体文件
-CODEX_SESSION_VIEWER_REAL_ROOT="$HOME/.codex" go -C src test ./internal/session -run TestRealLocalFiles -v
+# 下载仓库后使用脚本
+CODEX_HOME=/path/to/.codex PORT=10102 ./restart.sh
+
+# 单二进制运行
+./codex-session-viewer --codex-home /path/to/.codex --port 10102
 ```
 
-平台产物：`codex-session-viewer-{darwin,linux,windows}-{amd64,arm64}`，Windows 带 `.exe` 后缀。所有平台均关闭 CGO；Linux 为静态 ELF。跨平台编译不等于已在所有目标系统完成运行验证。
+脚本方式也支持 `PORT=0 ./restart.sh`，启动成功时打印实际地址。服务仅监听本机，不需要登录。
 
-## 本次环境验证说明
+agent 应验证健康接口，再告知用户服务可用：
 
-当前执行沙箱禁止绑定 localhost 端口，实际启动返回 `bind: operation not permitted`。已完成生产 HTTP Handler 的无端口集成测试，以及真实浏览器上的界面测试（使用 Handler 生成的合成数据快照）。实际监听、真实网络连接和后台服务健康检查需要在正常终端执行 `./restart.sh` 验证；不能把快照测试当作已经通过真实网络联调。
+```sh
+curl --noproxy '*' -fsS http://127.0.0.1:10002/api/health
+```
 
-GitHub shell DNS 同样受限，完整 `git clone` 未成功。研究源码通过 GitHub 连接独立取得，固定提交并核对 Git blob SHA，不来自其他本地项目；细节见 [格式与来源说明](docs/format.md)。
+返回 JSON 中应包含 `"ok": true`。修改端口后，健康检查和浏览器地址都要使用实际端口。
 
-### 输入来源与编号
+| 参数 | 作用 |
+| --- | --- |
+| `--codex-home <目录>` | 指定需要浏览的 Codex 根目录 |
+| `--port <端口>` | 默认 `10002`；`0` 自动选择空闲端口 |
+| `--data-dir <目录>` | 指定缓存及项目分组偏好的保存目录 |
+| `--version` | 查看二进制版本 |
+| `--help` | 查看完整参数 |
 
-默认可视化按执行步骤编号 `#1、#2…`，不等同 JSONL 行号。可追溯的镜像消息、工具调用与返回在磁盘索引中合并，跨滚动加载范围保持关联；详情列出对应 `L` 源行。辅助源记录开关改为按物理行顺序检查，每条显示 `源 L…`，不与步骤编号混用。索引期间优先提供最新内容，显示“编号计算中”，完成后补齐全局编号。
+## 引导用户使用
 
-完整的 `environment_context` 结构显示为“运行环境”，完整且有必要字段的 `heartbeat` 显示为“定时任务指令”，均默认收起并保留原文和源记录入口。执行标题提取定时任务指令摘要；环境信息不计为一次人工输入。普通消息里的 XML 片段或代码示例不会仅因含关键词被分类为自动触发。仅有 `role=user` 时标记“输入消息 · 来源未确认”；来源判断不使用额外 LLM 请求。
+### 1. 找到会话
+
+左侧先选项目，展开后选择会话。筛选框匹配项目、会话标题、目录、模型和代理等信息。项目菜单支持改名；多个目录使用相同项目名可以合并分组。
+
+如果关键词只存在于会话正文，使用“在所有会话内容中查找”；进入会话后，也可用全文搜索查找该文件中的输入、命令和工具返回内容。
+
+### 2. 默认看“执行过程”
+
+按执行轮次查看输入、分析摘要、计划、命令、修改文件、工具返回、答复和异常。展开步骤查看细节，通过原始记录入口核对证据。
+
+- `#1、#2…` 是全局可视化步骤编号；一个步骤可能合并多条源记录。
+- `L246` 是 JSONL 物理行号，与步骤编号含义不同。
+- “运行环境”和“定时任务指令”默认收起，保留摘要和原文；它们不等于用户主动输入。
+- 来源无法确认的消息会明确标注。
+
+### 3. 看 token 和时间花在哪里
+
+先看会话概览，再选择具体执行轮次，并展开模型请求或耗时步骤。
+
+- 输入包含缓存命中，输出包含推理输出，不要重复相加。
+- 累计 token 是模型处理量，不等于用户输入字数，也不等于实际账单。
+- 工具输出会影响后续请求，但日志通常不能把 token 精确分摊给每条命令。
+- 会话总历时包含用户间隔和等待；步骤耗时只采用日志明确记录的数据。
+- 多 agent 和并行工具的耗时可能重叠，不应直接相加。
+- 缺少用量或时间记录时显示“未记录”，不按零推断。
+
+代理协作视图按父子线程展示关系、记录时间区间和各线程已知消耗，可进入子代理会话查看细节。
+
+### 4. 核对 JSONL 或原始内容
+
+切换至“JSONL”可按字段、对象和数组展开；切换至“原始内容”可按源行查看文本。长字段按需读取，超长记录可以分段查看或下载完整原文。
+
+三种模式都支持上下滚动自动加载，默认优先显示最新内容。向上阅读会暂停实时跟随，点击“回到最新”或恢复“实时跟随”继续追踪。
+
+### 5. 查看大文件与历史时间
+
+支持超过 5GB 的单个 JSONL 文件。首次打开会先显示最新内容，同时在后台建立磁盘索引。索引期间的统计尚不完整，步骤显示“编号计算中”；完成后补齐全局编号，并可通过日期时间或执行轮次定位。
+
+索引缓存会加速后续访问；前端只保留有界的阅读窗口，不会把整个文件一次性载入浏览器。具体实测条件和结果见 [测试报告](docs/testing.md)。
+
+## 文件保存在哪里
+
+| 路径 | 用途 |
+| --- | --- |
+| `bin/` | 可直接运行的各平台二进制，已纳入仓库 |
+| `data/indexes/` | 自动生成、可重建的磁盘索引 |
+| `data/projects.json` | 项目改名与合并偏好 |
+| `data/server.pid`、`data/server.port` | 后台脚本记录的进程与端口 |
+| `log/server.log` | 运行日志 |
+
+从仓库 `bin/` 运行时，默认使用仓库的 `data/`；单独复制二进制到其他目录运行时，默认使用当前工作目录的 `data/`。日志在缓存目录同级的 `log/`。
+
+删除 `data/indexes/` 会触发重新索引；删除 `data/projects.json` 会清除分组偏好。运行时不依赖预先存在的这些文件。
+
+## 常见问题
+
+- **网页打不开**：先运行 `./status.sh`，核对进程和实际端口，再检查 `log/server.log`。使用单二进制时检查启动进程和健康接口，不要只凭启动命令返回就宣布成功。
+- **没有会话**：确认运行服务的系统用户、`CODEX_HOME` 或 `--codex-home`；目录中必须实际存在 JSONL 文件。目录内部的符号链接不跟随扫描。
+- **端口被占用**：指定其他端口，或脚本方式设置 `PORT=0`，再使用实际返回地址。
+- **提示格式错误 / 无法执行**：核对系统和 CPU 架构；macOS / Linux 下载后需要 `chmod +x`。如系统要求确认下载程序的运行权限，交由用户按系统提示处理。
+- **首次统计不完整**：等待索引完成，查看进度；不要把局部统计当作整个会话结果。
+- **部分内容无法还原**：工具只能展示文件实际保存的信息。已截断、加密或未保存的内容无法恢复；暂不解压 `.jsonl.zst`。
+
+需要修改程序、更新构建产物或研究格式时，转到 [开发 agent 指南](AGENTS.md)；格式适配依据见 [格式与来源说明](docs/format.md)。
