@@ -1,0 +1,35 @@
+{
+  "repository": "https://github.com/openai/codex",
+  "commit": "8c076942cb70fba8e5c4732c23f1faabc4aed484",
+  "method": "Independent GitHub connector source snapshot; git clone failed because shell DNS is unavailable.",
+  "files": [
+    {
+      "path": "LICENSE",
+      "gitBlobSHA": "4606e72e042564097e8780d66c1d4dcb611869bd"
+    },
+    {
+      "path": "codex-rs/protocol/src/protocol.rs",
+      "gitBlobSHA": "e2457f810461aa109543903f73ad1fcc6fbd9cfb"
+    },
+    {
+      "path": "codex-rs/rollout/src/recorder.rs",
+      "gitBlobSHA": "765d83ccc7df4b136c04774930f4ac65af15bbd5"
+    },
+    {
+      "path": "codex-rs/rollout/src/policy.rs",
+      "gitBlobSHA": "51997cd91beb8338e9f36022166cc1ad67b67885"
+    },
+    {
+      "path": "codex-rs/rollout/src/lib.rs",
+      "gitBlobSHA": "6a068945ebab3b04919cd0d36c7a4a7b0ab1055d"
+    },
+    {
+      "path": "codex-rs/history/src/lib.rs",
+      "gitBlobSHA": "826669cc3335dc23102e6a5bdbf2d62c1cb22fa4"
+    },
+    {
+      "path": "codex-rs/history/src/rollout_payload.rs",
+      "gitBlobSHA": "9ab89363df8a895ee4cfb28c4f38acb8a9d35250"
+    }
+  ]
+}

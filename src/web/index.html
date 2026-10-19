@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>codex-session-viewer · 看懂 Codex 的每一步</title><link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%236b4fbb'/%3E%3Ccircle cx='14' cy='14' r='7' fill='none' stroke='white' stroke-width='3'/%3E%3Cpath d='m19 19 7 7' stroke='white' stroke-width='3'/%3E%3C/svg%3E"><link rel="stylesheet" href="/app.css"><script defer src="/window.js"></script><script defer src="/app.js"></script></head>
+<body>
+<svg class="symbols" xmlns="http://www.w3.org/2000/svg"><defs>
+<symbol id="i-lens" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5M8 8h5M8 11h3"/></symbol>
+<symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7V5h6l2 2h10v13H3z"/></symbol>
+<symbol id="i-chat" viewBox="0 0 24 24"><path d="M4 4h16v13H9l-5 4zM8 8h8M8 12h5"/></symbol>
+<symbol id="i-chevron" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5M5 8a8 8 0 0 1 14-2l1 3M4 15l1 3a8 8 0 0 0 14-2"/></symbol>
+<symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21v-3a8 5 0 0 1 16 0v3"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/></symbol>
+<symbol id="i-token" viewBox="0 0 24 24"><path d="m12 2 9 5v10l-9 5-9-5V7zM3 7l9 5 9-5M12 12v10"/></symbol>
+<symbol id="i-terminal" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="3"/><path d="m6 9 4 3-4 3M13 15h5"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M4 2h10l6 6v14H4zM14 2v6h6M8 13h8M8 17h5"/></symbol>
+<symbol id="i-agent" viewBox="0 0 24 24"><circle cx="6" cy="5" r="3"/><circle cx="18" cy="19" r="3"/><circle cx="6" cy="19" r="3"/><path d="M6 8v8M6 10h7a5 5 0 0 1 5 5v1"/></symbol>
+<symbol id="i-spark" viewBox="0 0 24 24"><path d="m12 2 3 7 7 3-7 3-3 7-3-7-7-3 7-3z"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m4 12 5 5L20 6"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7v1"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></symbol>
+<symbol id="i-web" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></symbol>
+</defs></svg>
+<div class="app">
+<aside class="sidebar" id="sidebar">
+ <a class="brand" href="/"><span class="brandmark"><svg><use href="#i-lens"/></svg></span><span class="brand-name">codex-session-viewer<small>CODEX 会话观察室</small></span></a>
+ <div class="sidebar-tools"><div class="sidebar-heading"><span>项目与会话</span><div><button class="iconbtn" id="project-settings" title="合并项目 / 修改名称" aria-label="项目分组设置">⋯</button><button class="iconbtn" id="refresh-list" title="重新扫描" aria-label="重新扫描"><svg><use href="#i-refresh"/></svg></button></div></div><label class="searchbox"><svg><use href="#i-lens"/></svg><input id="filter" placeholder="筛选项目、会话标题…" aria-label="筛选项目与会话"><kbd>/</kbd></label><div id="list-count" class="muted tiny"></div><button id="global-search" class="textbtn" hidden>在所有会话内容中查找此关键词 →</button></div>
+ <nav id="projects" aria-label="项目会话列表"><div class="skeleton">正在发现本机会话…</div></nav>
+ <footer><span class="local-dot"></span> 本机运行 · 原始文件只读<button id="help" class="iconbtn" title="使用说明" aria-label="使用说明"><svg><use href="#i-info"/></svg></button></footer>
+</aside>
+<main>
+ <header class="topbar"><div class="breadcrumb"><button class="iconbtn mobile-toggle" id="toggle-sidebar" aria-label="切换项目列表">☰</button><span>工作空间</span><span>/</span><b id="crumb">选择一个会话</b></div><span class="privacy"><span class="local-dot"></span> LOCAL ONLY</span></header>
+ <section id="welcome" class="welcome"><div class="welcome-mark"><svg><use href="#i-lens"/></svg></div><span class="eyebrow">UNDERSTAND YOUR AGENT</span><h1>看懂 Codex 的每一步</h1><p>从你的一个想法，到它完成的每个动作。<br>把执行过程、时间和 token 消耗连在一起。</p><div class="welcome-features"><span><svg><use href="#i-chat"/></svg>按任务阅读</span><span><svg><use href="#i-token"/></svg>理解消耗</span><span><svg><use href="#i-agent"/></svg>看清协作</span></div><p class="muted small">从左侧展开项目，选择一个会话开始。</p></section>
+ <div id="workspace" hidden>
+  <section class="session-heading"><div class="eyebrow" id="session-eyebrow">SESSION EXPLORER</div><h1 id="session-title"></h1><div class="session-meta" id="session-meta"></div></section>
+  <div class="viewbar"><div class="tabs" role="tablist" aria-label="查看模式"><button data-mode="visual" role="tab" aria-selected="true"><svg><use href="#i-spark"/></svg>执行过程</button><button data-mode="json" role="tab" aria-selected="false">{ } JSONL</button><button data-mode="raw" role="tab" aria-selected="false"><svg><use href="#i-file"/></svg>原始内容</button></div><div class="view-actions"><button id="agents-btn" class="button small"><svg><use href="#i-agent"/></svg>代理协作<span id="agent-count" class="badge">0</span></button><button id="live" class="button small active" aria-pressed="true"><span class="local-dot"></span>实时跟随</button></div></div>
+  <section id="overview" class="overview"></section>
+  <section id="index-status" class="index-status" aria-live="polite"></section>
+  <section id="agents" class="agents-panel" hidden></section>
+  <div class="content-toolbar"><div class="left-tools"><button id="turn-picker" class="button"><svg><use href="#i-chat"/></svg><span id="turn-label">选择任务轮次</span>⌄</button><label class="date-control" title="按本机时区定位附近记录"><svg><use href="#i-clock"/></svg><input id="date" type="datetime-local" aria-label="按日期时间定位"><button id="locate" class="textbtn">定位</button></label></div><div class="right-tools"><label class="check small"><input type="checkbox" id="show-system">辅助源记录</label><button id="search-open" class="button"><svg><use href="#i-lens"/></svg>全文搜索</button></div></div>
+  <section id="turn-context" class="turn-context" hidden></section>
+  <section id="search-panel" class="search-panel" hidden><div class="search-controls"><input id="full-query" placeholder="搜索此文件的全部原始内容…" aria-label="全文搜索词"><button class="button primary" id="search-go">搜索</button><button class="button" id="search-cancel">取消</button><button class="iconbtn" id="search-close" aria-label="关闭搜索"><svg><use href="#i-close"/></svg></button></div><div id="search-progress" class="small muted"></div><div id="search-results"></div></section>
+  <div class="records-header"><span id="range-label"></span><div><button id="latest" class="button small">回到最新 ↓</button></div></div>
+  <section id="records" class="records" aria-label="会话内容，上下滚动自动加载" tabindex="0"></section>
+  <div id="scroll-status" class="scroll-status" role="status">向上或向下滚动，自动加载相邻内容</div>
+ </div>
+</main>
+</div>
+<dialog id="modal"><div class="modal-heading"><h2 id="modal-title"></h2><button id="modal-close" class="iconbtn" aria-label="关闭对话框"><svg><use href="#i-close"/></svg></button></div><div id="modal-body"></div></dialog>
+<div id="toast" role="status" hidden></div>
+</body></html>

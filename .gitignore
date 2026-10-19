@@ -1,0 +1,5 @@
+/bin/*
+/log/*
+/data/*
+/research/codex/
+*.DS_Store
